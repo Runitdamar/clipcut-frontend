@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<title>CLIPCUT — AI Person Extractor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:#03040a;--surface:#0c0e18;--elevated:#111422;--border:rgba(255,255,255,0.06);--border-hi:rgba(255,255,255,0.12);
+  --lime:#c6ff00;--lime-dim:rgba(198,255,0,0.12);--lime-glow:rgba(198,255,0,0.25);
+  --cyan:#00e5ff;--cyan-dim:rgba(0,229,255,0.08);--red:#ff3d5a;
+  --text-1:#f0f2ff;--text-2:#8890b0;--text-3:#4a5070;
+  --fd:'Syne',sans-serif;--fm:'Space Mono',monospace;--fb:'Inter',sans-serif;
+  --r-md:16px;--r-lg:24px;--spring:cubic-bezier(0.34,1.56,0.64,1);--ease:cubic-bezier(0.16,1,0.3,1);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{background:var(--void);color:var(--text-1);font-family:var(--fb);font-size:14px;min-height:100dvh;overflow-x:hidden;-webkit-font-smoothing:antialiased;}
+.bg-fx{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.bg-fx::before{content:'';position:absolute;width:600px;height:600px;top:-200px;right:-150px;background:radial-gradient(circle,rgba(198,255,0,0.07) 0%,transparent 70%);border-radius:50%;animation:breathe 8s ease-in-out infinite alternate;}
+.bg-fx::after{content:'';position:absolute;width:500px;height:500px;bottom:-100px;left:-150px;background:radial-gradient(circle,rgba(0,229,255,0.05) 0%,transparent 70%);border-radius:50%;animation:breathe 10s ease-in-out infinite alternate-reverse;}
+@keyframes breathe{from{transform:scale(1);opacity:.6;}to{transform:scale(1.15) translate(20px,20px);opacity:1;}}
+.grain{position:fixed;inset:0;pointer-events:none;z-index:1;opacity:0.025;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");}
+.shell{position:relative;z-index:2;max-width:520px;margin:0 auto;padding:0 16px 120px;}
+
+/* HEADER */
+.header{padding:32px 0 28px;display:flex;align-items:flex-start;justify-content:space-between;}
+.wm-main{font-family:var(--fd);font-size:2.4rem;font-weight:800;letter-spacing:-1px;line-height:1;background:linear-gradient(135deg,var(--text-1) 40%,var(--text-3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.wm-sub{font-family:var(--fm);font-size:0.55rem;letter-spacing:3px;color:var(--text-3);text-transform:uppercase;margin-top:3px;}
+.pills{display:flex;flex-direction:column;gap:5px;align-items:flex-end;padding-top:4px;}
+.pill{font-family:var(--fm);font-size:0.56rem;letter-spacing:1px;padding:4px 10px;border-radius:20px;text-transform:uppercase;}
+.pill-lime{background:var(--lime-dim);color:var(--lime);border:1px solid rgba(198,255,0,.2);}
+.pill-cyan{background:var(--cyan-dim);color:var(--cyan);border:1px solid rgba(0,229,255,.15);}
+
+/* DROPZONE */
+.dropzone{border:1.5px dashed var(--border-hi);border-radius:var(--r-lg);padding:48px 24px;text-align:center;cursor:pointer;background:var(--surface);transition:border-color .2s,background .2s,transform .2s var(--spring);position:relative;overflow:hidden;}
+.dropzone:active{transform:scale(.99);}
+.dropzone.drag{border-color:var(--lime);background:rgba(198,255,0,.03);}
+.dropzone.filled{border-style:solid;border-color:rgba(0,229,255,.4);background:rgba(0,229,255,.02);}
+.dz-icon{width:72px;height:72px;margin:0 auto 20px;background:var(--elevated);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:1.8rem;border:1px solid var(--border);box-shadow:0 8px 32px rgba(0,0,0,.4);transition:transform .3s var(--spring);}
+.dropzone.drag .dz-icon{transform:scale(1.1);}
+.dz-title{font-family:var(--fd);font-size:1.2rem;font-weight:800;margin-bottom:8px;}
+.dz-sub{color:var(--text-3);font-size:.82rem;line-height:1.7;}
+.dz-formats{margin-top:16px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;}
+.dz-fmt{font-family:var(--fm);font-size:.58rem;letter-spacing:.5px;padding:3px 10px;border-radius:20px;background:var(--elevated);border:1px solid var(--border);color:var(--text-3);}
+.dz-size{margin-top:12px;font-family:var(--fm);font-size:.65rem;color:var(--text-3);letter-spacing:1px;}
+#file-input{display:none;}
+
+/* FILE SELECTED */
+.file-card{display:none;margin-top:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:14px;animation:sld .3s var(--ease);}
+.file-card.show{display:block;}
+@keyframes sld{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:translateY(0);}}
+.fc-top{display:flex;align-items:center;gap:12px;}
+.fc-thumb{width:56px;height:56px;border-radius:12px;background:var(--elevated);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.4rem;border:1px solid var(--border);}
+.fc-thumb video{width:100%;height:100%;object-fit:cover;}
+.fc-info{flex:1;min-width:0;}
+.fc-name{font-size:.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fc-size{font-family:var(--fm);font-size:.7rem;color:var(--text-3);margin-top:3px;}
+.fc-remove{width:32px;height:32px;border-radius:8px;background:rgba(255,61,90,.1);border:1px solid rgba(255,61,90,.2);color:var(--red);font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+/* UPLOAD PROGRESS (chunked) */
+.upload-prog{display:none;margin-top:10px;}
+.upload-prog.show{display:block;}
+.up-label{display:flex;justify-content:space-between;margin-bottom:6px;font-size:.78rem;}
+.up-label span:last-child{font-family:var(--fm);color:var(--cyan);font-weight:700;}
+.up-track{height:3px;background:var(--elevated);border-radius:3px;overflow:hidden;}
+.up-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--cyan),var(--lime));transition:width .3s var(--ease);width:0%;box-shadow:0 0 8px rgba(0,229,255,.4);}
+.up-speed{font-family:var(--fm);font-size:.65rem;color:var(--text-3);margin-top:5px;text-align:right;}
+
+/* REF PHOTO */
+.ref-section{margin-top:16px;}
+.ref-label{font-family:var(--fm);font-size:.62rem;letter-spacing:2px;color:var(--text-3);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.ref-label::after{content:'';flex:1;height:1px;background:var(--border);}
+.ref-zone{display:flex;gap:12px;align-items:center;}
+.ref-btn{width:72px;height:72px;border-radius:var(--r-md);cursor:pointer;background:var(--surface);border:1.5px dashed var(--border-hi);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;flex-shrink:0;transition:border-color .2s;overflow:hidden;position:relative;}
+.ref-btn:hover{border-color:var(--lime);}
+.ref-btn img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;}
+.ref-btn span{font-size:1.4rem;}
+.ref-btn small{font-size:.56rem;color:var(--text-3);}
+#ref-input{display:none;}
+.ref-desc{flex:1;font-size:.78rem;color:var(--text-3);line-height:1.6;}
+.ref-desc strong{color:var(--text-2);}
+
+/* CTA */
+.btn-go{width:100%;margin-top:20px;padding:18px 24px;background:var(--lime);border:none;border-radius:var(--r-lg);color:#000;font-family:var(--fd);font-size:1rem;font-weight:800;letter-spacing:.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:transform .2s var(--spring),box-shadow .2s,opacity .2s;box-shadow:0 4px 30px var(--lime-glow);position:relative;overflow:hidden;}
+.btn-go::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 40%,rgba(255,255,255,.12));}
+.btn-go:active{transform:scale(.97);}
+.btn-go:disabled{opacity:.3;cursor:not-allowed;box-shadow:none;transform:none;}
+
+/* ERROR */
+.error-msg{display:none;margin-top:14px;background:rgba(255,61,90,.07);border:1px solid rgba(255,61,90,.2);border-radius:var(--r-md);padding:12px 16px;color:#ff6b80;font-size:.82rem;line-height:1.6;animation:sld .3s var(--ease);}
+.error-msg.show{display:block;}
+
+/* PROGRESS */
+.prog-wrap{display:none;margin-top:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;animation:sld .3s var(--ease);}
+.prog-wrap.show{display:block;}
+.prog-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;}
+.prog-title{font-family:var(--fd);font-size:.95rem;font-weight:700;}
+.prog-pct{font-family:var(--fm);font-size:1.1rem;color:var(--lime);font-weight:700;}
+.prog-track{height:4px;background:var(--elevated);border-radius:4px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--cyan),var(--lime));transition:width .5s var(--ease);width:0%;box-shadow:0 0 12px var(--lime-glow);}
+.prog-steps{margin-top:16px;display:flex;flex-direction:column;gap:8px;}
+.prog-step{display:flex;align-items:center;gap:10px;font-size:.78rem;color:var(--text-3);transition:color .3s;}
+.prog-step.active{color:var(--text-1);}
+.prog-step.done{color:var(--text-3);}
+.step-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--elevated);border:1px solid var(--border);transition:background .3s,border-color .3s;}
+.prog-step.active .step-dot{background:var(--lime);border-color:var(--lime);box-shadow:0 0 8px var(--lime-glow);}
+.prog-step.done .step-dot{background:var(--text-3);border-color:var(--text-3);}
+.prog-frames{margin-top:12px;display:flex;align-items:center;gap:8px;font-family:var(--fm);font-size:.68rem;color:var(--text-3);}
+.pulse-dot{width:6px;height:6px;border-radius:50%;background:var(--lime);animation:pulse 1s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+/* DIVIDER */
+.divider{display:flex;align-items:center;gap:12px;margin:28px 0 20px;}
+.divider-line{flex:1;height:1px;background:var(--border);}
+.divider-text{font-family:var(--fm);font-size:.62rem;letter-spacing:2px;color:var(--text-3);text-transform:uppercase;}
+
+/* PERSONS */
+.persons-section{display:none;}
+.persons-section.show{display:block;animation:fadeUp .4s var(--ease);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.section-title{font-family:var(--fd);font-size:1rem;font-weight:700;}
+.section-ct{font-family:var(--fm);font-size:.68rem;color:var(--text-3);}
+.persons-list{display:flex;flex-direction:column;gap:8px;}
+.person-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);cursor:pointer;overflow:hidden;transition:border-color .2s,transform .15s var(--spring);animation:fadeUp .35s var(--ease) both;}
+.person-card:active{transform:scale(.98);}
+.person-card.selected{border-color:var(--lime);background:rgba(198,255,0,.03);}
+.pc-main{display:flex;align-items:center;gap:12px;padding:12px 14px;}
+.pc-avatar{width:50px;height:50px;border-radius:12px;background:var(--elevated);overflow:hidden;flex-shrink:0;border:2px solid var(--border);position:relative;}
+.pc-avatar img{width:100%;height:100%;object-fit:cover;}
+.pc-avatar-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:1.3rem;}
+.pc-match-badge{position:absolute;bottom:-2px;right:-2px;background:var(--lime);color:#000;font-family:var(--fm);font-size:.5rem;font-weight:700;padding:1px 5px;border-radius:4px;}
+.pc-body{flex:1;min-width:0;}
+.pc-name{font-family:var(--fd);font-size:.92rem;font-weight:700;}
+.pc-stats{display:flex;gap:6px;margin-top:5px;flex-wrap:wrap;}
+.pc-stat{font-family:var(--fm);font-size:.63rem;color:var(--text-3);background:var(--elevated);border-radius:6px;padding:2px 8px;}
+.pc-stat.hi{color:var(--cyan);}
+.pc-stat.match{color:var(--lime);}
+.pc-check{width:24px;height:24px;border-radius:7px;border:1.5px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.75rem;transition:all .2s var(--spring);color:transparent;}
+.person-card.selected .pc-check{background:var(--lime);border-color:var(--lime);color:#000;}
+.pc-timeline{height:3px;background:var(--elevated);margin:0 14px 10px;border-radius:3px;position:relative;overflow:hidden;}
+.pc-seg{position:absolute;height:3px;border-radius:2px;background:var(--cyan);opacity:.5;transition:opacity .2s,background .2s;}
+.person-card.selected .pc-seg{opacity:1;background:var(--lime);}
+
+/* ACTION BAR */
+.action-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;padding:12px 16px 32px;background:linear-gradient(to top,var(--void) 60%,transparent);display:none;gap:8px;z-index:50;}
+.action-bar.show{display:flex;animation:slideUp .35s var(--ease);}
+@keyframes slideUp{from{transform:translate(-50%,100%);}to{transform:translate(-50%,0);}}
+.btn-sel-all{flex:1;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);color:var(--text-2);font-family:var(--fd);font-size:.82rem;font-weight:600;cursor:pointer;white-space:nowrap;}
+.btn-cut{flex:2;padding:14px;background:var(--lime);border:none;border-radius:var(--r-md);color:#000;font-family:var(--fd);font-size:.92rem;font-weight:800;cursor:pointer;transition:transform .15s var(--spring),opacity .15s;box-shadow:0 4px 20px var(--lime-glow);}
+.btn-cut:active{transform:scale(.97);}
+.btn-cut:disabled{opacity:.35;cursor:not-allowed;box-shadow:none;}
+
+/* CLIPS */
+.clips-section{display:none;margin-top:8px;}
+.clips-section.show{display:block;}
+.clips-list{display:flex;flex-direction:column;gap:12px;}
+.clip-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;animation:fadeUp .4s var(--ease) both;}
+.clip-video-wrap{position:relative;background:#000;}
+.clip-video-wrap video{width:100%;display:block;max-height:300px;object-fit:contain;}
+.clip-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4);transition:opacity .2s;}
+.clip-overlay.hidden{opacity:0;pointer-events:none;}
+.play-btn{width:54px;height:54px;border-radius:50%;background:rgba(198,255,0,.9);border:none;display:flex;align-items:center;justify-content:center;font-size:1.2rem;cursor:pointer;color:#000;transition:transform .15s var(--spring);}
+.play-btn:active{transform:scale(.9);}
+.clip-badge{position:absolute;top:10px;left:10px;font-family:var(--fm);font-size:.6rem;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);color:var(--lime);padding:4px 10px;border-radius:20px;border:1px solid rgba(198,255,0,.2);}
+.clip-bottom{padding:12px 14px;display:flex;align-items:center;justify-content:space-between;}
+.clip-meta strong{font-family:var(--fd);font-size:.88rem;font-weight:700;display:block;margin-bottom:3px;}
+.clip-meta span{font-family:var(--fm);font-size:.66rem;color:var(--text-3);}
+.btn-dl{display:flex;align-items:center;gap:6px;background:var(--elevated);border:1px solid var(--border);border-radius:10px;padding:8px 14px;color:var(--text-1);font-family:var(--fd);font-size:.78rem;font-weight:600;cursor:pointer;text-decoration:none;transition:border-color .2s,transform .15s var(--spring);}
+.btn-dl:active{border-color:var(--lime);transform:scale(.96);}
+
+/* TOAST */
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--elevated);border:1px solid var(--border);border-radius:30px;padding:10px 20px;font-size:.82rem;color:var(--text-1);opacity:0;transition:all .3s var(--ease);z-index:200;white-space:nowrap;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+</style>
+</head>
+<body>
+<div class="bg-fx"></div>
+<div class="grain"></div>
+<div class="shell">
+
+  <header class="header">
+    <div>
+      <div class="wm-main">CLIPCUT</div>
+      <div class="wm-sub">AI Person Extractor</div>
+    </div>
+    <div class="pills">
+      <span class="pill pill-lime">YOLOv8 GPU</span>
+      <span class="pill pill-cyan">Body Match</span>
+    </div>
+  </header>
+
+  <!-- DROPZONE -->
+  <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()">
+    <div class="dz-icon" id="dzIcon">🎬</div>
+    <div class="dz-title" id="dzTitle">Drop your video here</div>
+    <div class="dz-sub" id="dzSub">Tap to pick from gallery<br>Works with any video — movies, sports, personal clips</div>
+    <div class="dz-formats">
+      <span class="dz-fmt">MP4</span>
+      <span class="dz-fmt">MOV</span>
+      <span class="dz-fmt">AVI</span>
+      <span class="dz-fmt">MKV</span>
+      <span class="dz-fmt">WEBM</span>
+    </div>
+    <div class="dz-size">MAX 500 MB</div>
+    <input type="file" id="file-input" accept="video/*"/>
+  </div>
+
+  <!-- FILE SELECTED CARD -->
+  <div class="file-card" id="fileCard">
+    <div class="fc-top">
+      <div class="fc-thumb" id="fcThumb">🎥</div>
+      <div class="fc-info">
+        <div class="fc-name" id="fcName">—</div>
+        <div class="fc-size" id="fcSize">—</div>
+      </div>
+      <button class="fc-remove" onclick="clearFile()">✕</button>
+    </div>
+    <!-- Chunked upload progress -->
+    <div class="upload-prog" id="uploadProg">
+      <div class="up-label">
+        <span id="upLabel">Uploading...</span>
+        <span id="upPct">0%</span>
+      </div>
+      <div class="up-track"><div class="up-fill" id="upFill"></div></div>
+      <div class="up-speed" id="upSpeed"></div>
+    </div>
+  </div>
+
+  <!-- REF PHOTO -->
+  <div class="ref-section">
+    <div class="ref-label">Reference Photo <span style="font-size:.58rem;letter-spacing:1px;color:var(--text-3)">&nbsp;OPTIONAL</span></div>
+    <div class="ref-zone">
+      <div class="ref-btn" id="refBtn" onclick="document.getElementById('ref-input').click()">
+        <span id="refIcon">🖼️</span>
+        <small>Add face</small>
+        <input type="file" id="ref-input" accept="image/*"/>
+      </div>
+      <div class="ref-desc">
+        Upload a <strong>reference photo</strong> to find a specific person — works even if blurry, far away, or side-profile. Without it, all detected people are shown.
+      </div>
+    </div>
+  </div>
+
+  <button class="btn-go" id="btnGo" disabled onclick="startProcessing()">
+    <span>⚡</span> Detect &amp; Extract
+  </button>
+
+  <div class="error-msg" id="errorMsg"></div>
+
+  <!-- ANALYSIS PROGRESS -->
+  <div class="prog-wrap" id="progWrap">
+    <div class="prog-head">
+      <div class="prog-title" id="progTitle">Processing...</div>
+      <div class="prog-pct" id="progPct">0%</div>
+    </div>
+    <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+    <div class="prog-steps">
+      <div class="prog-step" id="s0"><div class="step-dot"></div><span>Uploading video</span></div>
+      <div class="prog-step" id="s1"><div class="step-dot"></div><span>YOLOv8 person detection</span></div>
+      <div class="prog-step" id="s2"><div class="step-dot"></div><span>Clothing &amp; body matching</span></div>
+      <div class="prog-step" id="s3"><div class="step-dot"></div><span>Building person timelines</span></div>
+      <div class="prog-step" id="s4"><div class="step-dot"></div><span>Cutting clips</span></div>
+    </div>
+    <div class="prog-frames" id="progFrames" style="display:none">
+      <div class="pulse-dot"></div>
+      <span id="progFTxt">Scanning frames...</span>
+    </div>
+  </div>
+
+  <div class="divider" id="divider" style="display:none">
+    <div class="divider-line"></div><div class="divider-text">Results</div><div class="divider-line"></div>
+  </div>
+
+  <div class="persons-section" id="personsSection">
+    <div class="section-head">
+      <div class="section-title">People Found</div>
+      <div class="section-ct" id="personsCt"></div>
+    </div>
+    <div class="persons-list" id="personsList"></div>
+  </div>
+
+  <div class="clips-section" id="clipsSection">
+    <div class="section-head" style="margin-top:24px">
+      <div class="section-title">Your Clips</div>
+      <div class="section-ct" id="clipsCt"></div>
+    </div>
+    <div class="clips-list" id="clipsList"></div>
+  </div>
+</div>
+
+<div class="action-bar" id="actionBar">
+  <button class="btn-sel-all" id="btnSelAll" onclick="toggleSelAll()">Select All</button>
+  <button class="btn-cut" id="btnCut" disabled onclick="getClips()">✂️ Cut Clips</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const API        = "https://runitdamar-clipcut-backend.hf.space";
+const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB per chunk — safer for HF Spaces
+const $          = id => document.getElementById(id);
+
+let selectedFile=null, refFile=null, jobId=null, persons=[], selectedIds=new Set();
+
+// ── DROPZONE ──────────────────────────────────────────
+const dz=$('dropzone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0]);});
+$('file-input').addEventListener('change',e=>{if(e.target.files[0])handleFile(e.target.files[0]);});
+
+function handleFile(f) {
+  if(f.size > 500*1024*1024){showError('File too large. Max 500MB.');return;}
+  selectedFile=f;
+  dz.classList.add('filled');
+  $('dzIcon').textContent='✅';
+  $('dzTitle').textContent='Video ready!';
+  $('dzSub').textContent=f.name;
+  $('fcName').textContent=f.name;
+  $('fcSize').textContent=fmtSize(f.size)+' · '+f.type.split('/')[1]?.toUpperCase();
+  $('fcThumb').innerHTML=`<video src="${URL.createObjectURL(f)}" muted playsinline></video>`;
+  $('fileCard').classList.add('show');
+  $('btnGo').disabled=false; hideError();
+}
+
+function clearFile() {
+  selectedFile=null; $('file-input').value='';
+  dz.classList.remove('filled');
+  $('dzIcon').textContent='🎬'; $('dzTitle').textContent='Drop your video here';
+  $('dzSub').textContent='Tap to pick from gallery\nWorks with any video — movies, sports, personal clips';
+  $('fileCard').classList.remove('show');
+  $('uploadProg').classList.remove('show');
+  $('btnGo').disabled=true; hideError();
+}
+
+// ── REF PHOTO ─────────────────────────────────────────
+$('ref-input').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f) return;
+  refFile=f;
+  $('refBtn').innerHTML=`<img src="${URL.createObjectURL(f)}" alt="ref"/>`;
+  showToast('📸 Reference photo added');
+});
+
+// ── MAIN FLOW ─────────────────────────────────────────
+async function startProcessing() {
+  $('btnGo').disabled=true; hideError(); resetResults();
+  $('progWrap').classList.add('show'); stepActive(0); setP(2,'Uploading...');
+
+  try {
+    // ── STEP 1: Chunked upload ──────────────────────
+    $('uploadProg').classList.add('show');
+    const jid = await chunkedUpload(selectedFile);
+    jobId = jid;
+
+    $('uploadProg').classList.remove('show');
+    setP(18,'Starting AI detection...'); stepActive(1);
+    $('progFrames').style.display='flex';
+
+    // ── STEP 2: Poll for result ────────────────────
+    const result = await poll(jid);
+    persons = result.persons;
+
+    setP(100,'Done!'); $('progFrames').style.display='none';
+    await sleep(600); $('progWrap').classList.remove('show');
+
+    renderPersons(persons);
+    $('divider').style.display='flex';
+    $('personsSection').classList.add('show');
+    $('actionBar').classList.add('show');
+
+  } catch(e) {
+    $('progWrap').classList.remove('show');
+    $('uploadProg').classList.remove('show');
+    $('btnGo').disabled=false;
+    showError('❌ '+e.message);
+  }
+}
+
+// ── CHUNKED UPLOAD ─────────────────────────────────────
+async function chunkedUpload(file) {
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+  const startTime   = Date.now();
+
+  // Init upload session
+  const initRes = await fetch(`${API}/upload/init`,{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({filename:file.name, total_size:file.size, total_chunks:totalChunks})
+  });
+  if(!initRes.ok) throw new Error(await initRes.text());
+  const {upload_id} = await initRes.json();
+
+  // Upload chunks with retry
+  for(let i=0; i<totalChunks; i++) {
+    const start = i * CHUNK_SIZE;
+    const chunk = file.slice(start, start + CHUNK_SIZE);
+    let ok = false;
+    for(let attempt=0; attempt<3; attempt++) {
+      try {
+        const res = await fetch(`${API}/upload/chunk/${upload_id}/${i}`,{
+          method:'POST',
+          headers:{'Content-Type':'application/octet-stream'},
+          body: chunk,
+          signal: AbortSignal.timeout(30000) // 30s timeout per chunk
+        });
+        if(res.ok){ ok=true; break; }
+      } catch(e) {
+        if(attempt===2) throw new Error(`Chunk ${i+1} failed after 3 attempts. Check your connection.`);
+        await new Promise(r=>setTimeout(r,2000)); // wait 2s before retry
+      }
+    }
+    if(!ok) throw new Error(`Chunk ${i+1} failed.`);
+
+    // Update progress
+    const pct     = Math.round(((i+1)/totalChunks)*100);
+    const elapsed = (Date.now()-startTime)/1000;
+    const speed   = ((i+1)*CHUNK_SIZE/elapsed/1024/1024).toFixed(1);
+    const eta     = Math.round((totalChunks-i-1)*CHUNK_SIZE/((i+1)*CHUNK_SIZE/elapsed));
+
+    $('upFill').style.width = pct+'%';
+    $('upPct').textContent  = pct+'%';
+    $('upLabel').textContent= `Uploading chunk ${i+1}/${totalChunks}`;
+    $('upSpeed').textContent= `${speed} MB/s · ${eta}s remaining`;
+    setP(Math.round(pct*0.15), `Uploading... ${pct}%`);
+  }
+
+  // Finalize
+  $('upLabel').textContent='Finalizing...';
+  const refB64 = refFile ? await toB64(refFile) : null;
+  const finRes = await fetch(`${API}/upload/finalize`,{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({upload_id, reference_image:refB64})
+  });
+  if(!finRes.ok) throw new Error(await finRes.text());
+  const {job_id} = await finRes.json();
+  return job_id;
+}
+
+// ── POLL ──────────────────────────────────────────────
+async function poll(jid) {
+  let retries=0;
+  while(true) {
+    await sleep(2200);
+    let res,data;
+    try{ res=await fetch(`${API}/status/${jid}`); data=await res.json(); }
+    catch{ await sleep(3000); continue; }
+
+    if(res.status===404 && retries<2){
+      retries++; showToast('⚡ Reconnecting...'); await sleep(2000); continue;
+    }
+    if(!res.ok) throw new Error(data?.detail||'Server error');
+
+    const s=data.status, p=data.progress||0;
+    const fd=(data.frames_done||0).toLocaleString();
+    const tf=(data.total_frames||0).toLocaleString();
+
+    if(s==='queued')    { setP(18,'Queued, starting soon...'); }
+    else if(s==='detecting') { stepActive(1); setP(18+p*44,'YOLOv8 scanning...'); $('progFTxt').textContent=`${fd} / ${tf} frames`; }
+    else if(s==='matching')  { stepActive(2); setP(63+p*8,'Matching bodies...'); }
+    else if(s==='building')  { stepActive(3); setP(72+p*8,'Building timelines...'); }
+    else if(s==='cutting')   { stepActive(4); setP(81+p*17,'Cutting clips...'); }
+    else if(s==='done')      { allDone(); return data; }
+    else if(s==='error')     throw new Error(data.message||'Processing failed');
+  }
+}
+
+// ── PERSONS ───────────────────────────────────────────
+function renderPersons(ps) {
+  const list=$('personsList'); list.innerHTML=''; selectedIds.clear();
+  $('personsCt').textContent=`${ps.length} person${ps.length!==1?'s':''}`;
+  const M=['🥇','🥈','🥉'];
+  ps.forEach((p,i)=>{
+    const card=document.createElement('div'); card.className='person-card'; card.dataset.id=p.id;
+    card.style.animationDelay=`${i*60}ms`;
+    const dur=p.intervals.reduce((s,[a,b])=>s+(b-a),0);
+    const segs=p.intervals.map(([s,e])=>`<div class="pc-seg" style="left:${(s/p.video_duration*100).toFixed(1)}%;width:${((e-s)/p.video_duration*100).toFixed(1)}%"></div>`).join('');
+    const mp=p.match_score?Math.round(p.match_score*100):null;
+    card.innerHTML=`
+      <div class="pc-main">
+        <div class="pc-avatar">
+          ${p.thumbnail?`<img src="${API}/thumbnail/${jobId}/${p.id}" onerror="this.parentNode.innerHTML='<div class=\\'pc-avatar-ph\\'>👤</div>'"/>`:'<div class="pc-avatar-ph">👤</div>'}
+          ${mp?`<div class="pc-match-badge">${mp}%</div>`:''}
+        </div>
+        <div class="pc-body">
+          <div class="pc-name">${i<3?M[i]:`#${i+1}`} Person ${i+1}</div>
+          <div class="pc-stats">
+            <span class="pc-stat">${p.intervals.length} clip${p.intervals.length!==1?'s':''}</span>
+            <span class="pc-stat hi">⏱ ${fmtTime(dur)}</span>
+            ${mp?`<span class="pc-stat match">⚡ ${mp}% match</span>`:''}
+          </div>
+        </div>
+        <div class="pc-check">✓</div>
+      </div>
+      <div class="pc-timeline">${segs}</div>`;
+    card.addEventListener('click',()=>toggleP(card,p.id));
+    list.appendChild(card);
+  });
+  updateBar();
+}
+
+function toggleP(card,id){if(selectedIds.has(id)){selectedIds.delete(id);card.classList.remove('selected');}else{selectedIds.add(id);card.classList.add('selected');}updateBar();}
+function toggleSelAll(){const all=selectedIds.size===persons.length;document.querySelectorAll('.person-card').forEach(c=>{const id=parseInt(c.dataset.id);if(all){selectedIds.delete(id);c.classList.remove('selected');}else{selectedIds.add(id);c.classList.add('selected');}});updateBar();}
+function updateBar(){$('btnCut').disabled=selectedIds.size===0;$('btnSelAll').textContent=selectedIds.size===persons.length?'Deselect All':'Select All';}
+
+// ── CLIPS ─────────────────────────────────────────────
+async function getClips() {
+  $('btnCut').disabled=true; $('actionBar').classList.remove('show');
+  $('progWrap').classList.add('show'); allReset(); stepActive(4); setP(10,'Cutting clips...');
+  try {
+    const res=await fetch(`${API}/clips`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job_id:jobId,person_ids:[...selectedIds]})});
+    if(!res.ok) throw new Error(await res.text());
+    const {clips}=await res.json();
+    setP(100,'Done!'); await sleep(500); $('progWrap').classList.remove('show');
+    renderClips(clips);
+  } catch(e){$('progWrap').classList.remove('show');$('btnCut').disabled=false;$('actionBar').classList.add('show');showError('❌ '+e.message);}
+}
+
+function renderClips(clips){
+  $('clipsSection').classList.add('show'); const list=$('clipsList'); list.innerHTML='';
+  $('clipsCt').textContent=`${clips.length} person${clips.length!==1?'s':''}`;
+  const M=['🥇','🥈','🥉'];
+  clips.forEach((c,i)=>{
+    const url=`${API}/clip/${c.path}`; const el=document.createElement('div'); el.className='clip-card'; el.style.animationDelay=`${i*80}ms`;
+    const dur = c.total_duration || (c.end - c.start);
+    const matchTxt = c.match_score ? ` · ⚡ ${Math.round(c.match_score*100)}% match` : '';
+    el.innerHTML=`
+      <div class="clip-video-wrap">
+        <video src="${url}" playsinline preload="metadata"></video>
+        <div class="clip-overlay" id="co${i}"><button class="play-btn" onclick="togglePlay(${i})">▶</button></div>
+        <div class="clip-badge">${M[c.rank]||`#${c.rank+1}`} Person ${c.rank+1} · 9:16</div>
+      </div>
+      <div class="clip-bottom">
+        <div class="clip-meta">
+          <strong>${c.clip_count} scene${c.clip_count!==1?'s':''} · ${fmtTime(dur)} total${matchTxt}</strong>
+          <span>Merged · Smart crop · 9:16</span>
+        </div>
+        <a class="btn-dl" href="${url}" download="person_${c.rank+1}_9x16.mp4">⬇️ Save</a>
+      </div>`;
+    list.appendChild(el);
+  });
+  setTimeout(()=>$('clipsSection').scrollIntoView({behavior:'smooth',block:'start'}),150);
+}
+
+function togglePlay(i){
+  const vs=document.querySelectorAll('.clip-video-wrap video'); const ov=$(`co${i}`); const v=vs[i];
+  if(v.paused){vs.forEach((x,j)=>{if(j!==i&&!x.paused){x.pause();$(`co${j}`)?.classList.remove('hidden');}});v.play();ov.classList.add('hidden');v.onended=()=>ov.classList.remove('hidden');}
+  else{v.pause();ov.classList.remove('hidden');}
+}
+
+// ── PROGRESS HELPERS ──────────────────────────────────
+function setP(pct,title){$('progFill').style.width=pct+'%';$('progPct').textContent=Math.round(pct)+'%';if(title)$('progTitle').textContent=title;}
+function stepActive(n){for(let i=0;i<5;i++){const e=$(`s${i}`);e.classList.remove('active','done');if(i<n)e.classList.add('done');else if(i===n)e.classList.add('active');}}
+function allDone(){for(let i=0;i<5;i++){$(`s${i}`).classList.remove('active');$(`s${i}`).classList.add('done');}}
+function allReset(){for(let i=0;i<5;i++)$(`s${i}`).classList.remove('active','done');}
+
+// ── MISC ──────────────────────────────────────────────
+function resetResults(){persons=[];selectedIds.clear();jobId=null;$('personsSection').classList.remove('show');$('clipsSection').classList.remove('show');$('actionBar').classList.remove('show');$('divider').style.display='none';$('personsList').innerHTML='';$('clipsList').innerHTML='';}
+function showError(m){$('errorMsg').textContent=m;$('errorMsg').classList.add('show');}
+function hideError(){$('errorMsg').classList.remove('show');}
+function showToast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+function fmtSize(b){return b>1048576?(b/1048576).toFixed(1)+' MB':(b/1024).toFixed(0)+' KB';}
+function fmtTime(s){const m=Math.floor(s/60),sec=Math.floor(s%60);return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function toB64(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(f);});}
+</script>
+</body>
+</html>
