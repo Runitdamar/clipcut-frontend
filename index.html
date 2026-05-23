@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ClipCut AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #131313;
+    --surface2: #1c1c1c;
+    --border: #2a2a2a;
+    --accent: #e8ff47;
+    --accent2: #ff6b35;
+    --text: #f0f0f0;
+    --muted: #666;
+    --success: #4ade80;
+    --error: #ff4545;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── header ── */
+  header {
+    padding: 28px 20px 0;
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px;
+    letter-spacing: 2px;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .logo span {
+    color: var(--accent);
+  }
+
+  .badge {
+    background: var(--accent);
+    color: #000;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    font-weight: 500;
+    padding: 3px 7px;
+    border-radius: 3px;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  /* ── main ── */
+  main {
+    padding: 24px 20px 40px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .tagline {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 6px;
+    margin-bottom: 28px;
+    font-weight: 300;
+    letter-spacing: 0.3px;
+  }
+
+  /* ── sections ── */
+  .section {
+    margin-bottom: 20px;
+  }
+
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── upload zones ── */
+  .upload-zone {
+    border: 1.5px dashed var(--border);
+    border-radius: 12px;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+    background: var(--surface);
+  }
+
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(232, 255, 71, 0.03);
+  }
+
+  .upload-zone.filled {
+    border-style: solid;
+    border-color: var(--accent);
+    background: rgba(232, 255, 71, 0.05);
+  }
+
+  .upload-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-icon {
+    font-size: 28px;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .upload-title {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+
+  .upload-sub {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 300;
+  }
+
+  .upload-zone.filled .upload-icon,
+  .upload-zone.filled .upload-title { color: var(--accent); }
+
+  /* ── ref photo ── */
+  .ref-zone {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border: 1.5px dashed var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+    background: var(--surface);
+  }
+
+  .ref-zone:hover { border-color: var(--accent2); }
+  .ref-zone.filled { border-style: solid; border-color: var(--accent2); background: rgba(255, 107, 53, 0.05); }
+
+  .ref-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .ref-preview {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--accent2);
+    flex-shrink: 0;
+    display: none;
+  }
+
+  .ref-placeholder {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+
+  .ref-info { flex: 1; }
+  .ref-title { font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+  .ref-sub { font-size: 12px; color: var(--muted); font-weight: 300; }
+  .ref-zone.filled .ref-title { color: var(--accent2); }
+
+  /* ── progress ── */
+  .progress-wrap {
+    display: none;
+    margin-bottom: 20px;
+  }
+
+  .progress-wrap.visible { display: block; }
+
+  .progress-bar-bg {
+    height: 3px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 99px;
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+
+  .progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .progress-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .progress-pct {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+  }
+
+  /* ── upload progress (chunked) ── */
+  .upload-progress {
+    margin-top: 10px;
+    display: none;
+  }
+
+  .upload-progress.visible { display: block; }
+
+  .upload-progress-bar-bg {
+    height: 2px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+
+  .upload-progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 99px;
+    transition: width 0.2s;
+    width: 0%;
+  }
+
+  .upload-progress-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* ── button ── */
+  .btn-primary {
+    width: 100%;
+    padding: 16px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    margin-bottom: 20px;
+  }
+
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+  /* ── result ── */
+  .result-card {
+    display: none;
+    background: var(--surface);
+    border: 1.5px solid var(--success);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .result-card.visible { display: block; }
+
+  .result-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .result-icon { font-size: 20px; }
+
+  .result-title {
+    font-weight: 500;
+    font-size: 15px;
+    color: var(--success);
+  }
+
+  .result-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .stat {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 12px 10px;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 1px;
+    color: var(--accent);
+    display: block;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 1px;
+  }
+
+  .btn-download {
+    width: 100%;
+    padding: 14px;
+    background: var(--success);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .btn-download:hover { opacity: 0.85; }
+
+  .btn-reset {
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: color 0.2s, border-color 0.2s;
+  }
+
+  .btn-reset:hover { color: var(--text); border-color: var(--muted); }
+
+  /* ── error ── */
+  .error-card {
+    display: none;
+    background: rgba(255, 69, 69, 0.08);
+    border: 1px solid var(--error);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .error-card.visible { display: block; }
+
+  .error-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--error);
+    margin-bottom: 6px;
+  }
+
+  .error-msg {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  /* ── footer ── */
+  footer {
+    text-align: center;
+    padding: 0 20px 30px;
+    font-size: 11px;
+    color: var(--border);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 1px;
+  }
+
+  /* ── animations ── */
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .pulsing { animation: pulse 1.5s infinite; }
+
+  /* ── divider ── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 24px 0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Clip<span>Cut</span></div>
+  <div class="badge">AI</div>
+</header>
+
+<main>
+  <p class="tagline">Upload a video + reference photo → get a clean clip of just that person.</p>
+
+  <!-- Video Upload -->
+  <div class="section">
+    <div class="section-label">1 — Video</div>
+    <div class="upload-zone" id="videoZone">
+      <input type="file" id="videoInput" accept="video/*">
+      <span class="upload-icon">🎬</span>
+      <div class="upload-title" id="videoTitle">Tap to upload video</div>
+      <div class="upload-sub">MP4, MOV, AVI — any size</div>
+      <div class="upload-progress" id="videoUploadProgress">
+        <div class="upload-progress-bar-bg">
+          <div class="upload-progress-bar-fill" id="videoProgressFill"></div>
+        </div>
+        <div class="upload-progress-text" id="videoProgressText">Uploading...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reference Photo -->
+  <div class="section">
+    <div class="section-label">2 — Reference Photo</div>
+    <div class="ref-zone" id="refZone">
+      <input type="file" id="refInput" accept="image/*">
+      <div class="ref-placeholder" id="refPlaceholder">👤</div>
+      <img class="ref-preview" id="refPreview" alt="Reference">
+      <div class="ref-info">
+        <div class="ref-title" id="refTitle">Add reference photo</div>
+        <div class="ref-sub">Clear face photo of the person to track</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Process Button -->
+  <button class="btn-primary" id="processBtn" disabled>EXTRACT PERSON</button>
+
+  <!-- Processing Progress -->
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="progressFill"></div>
+    </div>
+    <div class="progress-info">
+      <span class="progress-text pulsing" id="progressText">Processing...</span>
+      <span class="progress-pct" id="progressPct">0%</span>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div class="error-card" id="errorCard">
+    <div class="error-title">⚠ Something went wrong</div>
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <!-- Result -->
+  <div class="result-card" id="resultCard">
+    <div class="result-header">
+      <span class="result-icon">✅</span>
+      <span class="result-title">Person extracted successfully</span>
+    </div>
+    <div class="result-stats">
+      <div class="stat">
+        <span class="stat-value" id="statDuration">—</span>
+        <span class="stat-label">ORIG SEC</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="statExtracted">—</span>
+        <span class="stat-label">KEPT SEC</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="statClips">—</span>
+        <span class="stat-label">SCENES</span>
+      </div>
+    </div>
+    <button class="btn-download" id="downloadBtn">⬇ DOWNLOAD VIDEO</button>
+    <button class="btn-reset" id="resetBtn">Process another video</button>
+  </div>
+</main>
+
+<footer>CLIPCUT AI — POWERED BY ARCFACE</footer>
+
+<script>
+  const BACKEND = "https://runitdamar-clipcut-backend.hf.space";
+  const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
+
+  let jobId = null;
+  let videoReady = false;
+  let refReady = false;
+  let pollInterval = null;
+
+  // ── elements ──
+  const videoInput = document.getElementById("videoInput");
+  const refInput = document.getElementById("refInput");
+  const videoZone = document.getElementById("videoZone");
+  const refZone = document.getElementById("refZone");
+  const processBtn = document.getElementById("processBtn");
+  const progressWrap = document.getElementById("progressWrap");
+  const progressFill = document.getElementById("progressFill");
+  const progressText = document.getElementById("progressText");
+  const progressPct = document.getElementById("progressPct");
+  const errorCard = document.getElementById("errorCard");
+  const errorMsg = document.getElementById("errorMsg");
+  const resultCard = document.getElementById("resultCard");
+  const downloadBtn = document.getElementById("downloadBtn");
+  const resetBtn = document.getElementById("resetBtn");
+
+  // ── generate job ID ──
+  function newJobId() {
+    return 'job_' + Math.random().toString(36).slice(2, 10) + Date.now();
+  }
+
+  // ── chunked upload ──
+  async function uploadChunked(file, fileType, progressFillEl, progressTextEl, progressWrapEl) {
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    progressWrapEl.classList.add("visible");
+
+    for (let i = 0; i < totalChunks; i++) {
+      const start = i * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, file.size);
+      const chunk = file.slice(start, end);
+
+      const formData = new FormData();
+      formData.append("chunk", chunk, file.name);
+
+      const url = `${BACKEND}/upload-chunk?job_id=${jobId}&chunk_index=${i}&total_chunks=${totalChunks}&file_type=${fileType}`;
+      const resp = await fetch(url, { method: "POST", body: formData });
+      if (!resp.ok) throw new Error(`Upload failed at chunk ${i}`);
+
+      const pct = Math.round(((i + 1) / totalChunks) * 100);
+      progressFillEl.style.width = pct + "%";
+      progressTextEl.textContent = `Uploading... ${pct}%`;
+    }
+
+    progressTextEl.textContent = "Upload complete ✓";
+  }
+
+  // ── video input ──
+  videoInput.addEventListener("change", async () => {
+    const file = videoInput.files[0];
+    if (!file) return;
+
+    if (!jobId) jobId = newJobId();
+
+    videoReady = false;
+    checkReady();
+
+    const title = document.getElementById("videoTitle");
+    title.textContent = file.name.length > 28 ? file.name.slice(0, 25) + "..." : file.name;
+    videoZone.classList.add("filled");
+
+    const fillEl = document.getElementById("videoProgressFill");
+    const textEl = document.getElementById("videoProgressText");
+    const wrapEl = document.getElementById("videoUploadProgress");
+
+    try {
+      await uploadChunked(file, "video", fillEl, textEl, wrapEl);
+      videoReady = true;
+      checkReady();
+    } catch (e) {
+      showError("Video upload failed: " + e.message);
+    }
+  });
+
+  // ── ref photo input ──
+  refInput.addEventListener("change", async () => {
+    const file = refInput.files[0];
+    if (!file) return;
+
+    if (!jobId) jobId = newJobId();
+
+    refReady = false;
+    checkReady();
+
+    // Preview
+    const reader = new FileReader();
+    reader.onload = e => {
+      const preview = document.getElementById("refPreview");
+      const placeholder = document.getElementById("refPlaceholder");
+      preview.src = e.target.result;
+      preview.style.display = "block";
+      placeholder.style.display = "none";
+    };
+    reader.readAsDataURL(file);
+
+    document.getElementById("refTitle").textContent = file.name.length > 22 ? file.name.slice(0, 19) + "..." : file.name;
+    refZone.classList.add("filled");
+
+    // Upload ref (usually small, one chunk)
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    for (let i = 0; i < totalChunks; i++) {
+      const start = i * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, file.size);
+      const chunk = file.slice(start, end);
+      const formData = new FormData();
+      formData.append("chunk", chunk, file.name);
+      const url = `${BACKEND}/upload-chunk?job_id=${jobId}&chunk_index=${i}&total_chunks=${totalChunks}&file_type=reference`;
+      await fetch(url, { method: "POST", body: formData });
+    }
+
+    refReady = true;
+    checkReady();
+  });
+
+  function checkReady() {
+    processBtn.disabled = !(videoReady && refReady);
+  }
+
+  // ── process ──
+  processBtn.addEventListener("click", async () => {
+    if (!jobId) return;
+    hideError();
+    resultCard.classList.remove("visible");
+    processBtn.disabled = true;
+    progressWrap.classList.add("visible");
+    setProgress(0, "Starting...");
+
+    try {
+      const resp = await fetch(`${BACKEND}/process?job_id=${jobId}`, { method: "POST" });
+      if (!resp.ok) {
+        const data = await resp.json();
+        throw new Error(data.detail || "Failed to start processing");
+      }
+      startPolling();
+    } catch (e) {
+      showError(e.message);
+      processBtn.disabled = false;
+    }
+  });
+
+  function startPolling() {
+    if (pollInterval) clearInterval(pollInterval);
+    pollInterval = setInterval(poll, 2000);
+  }
+
+  async function poll() {
+    try {
+      const resp = await fetch(`${BACKEND}/status/${jobId}`);
+      if (!resp.ok) return;
+      const data = await resp.json();
+
+      setProgress(data.progress, data.status_text);
+
+      if (data.status === "done") {
+        clearInterval(pollInterval);
+        showResult(data.stats);
+      } else if (data.status === "failed") {
+        clearInterval(pollInterval);
+        showError(data.error || "Processing failed.");
+        processBtn.disabled = false;
+        progressWrap.classList.remove("visible");
+      }
+    } catch (e) {
+      // network hiccup, keep polling
+    }
+  }
+
+  function setProgress(pct, text) {
+    progressFill.style.width = pct + "%";
+    progressText.textContent = text || "Processing...";
+    progressPct.textContent = pct + "%";
+  }
+
+  function showResult(stats) {
+    progressWrap.classList.remove("visible");
+    resultCard.classList.add("visible");
+
+    if (stats) {
+      document.getElementById("statDuration").textContent = stats.duration + "s";
+      document.getElementById("statExtracted").textContent = stats.extracted + "s";
+      document.getElementById("statClips").textContent = stats.clips;
+    }
+  }
+
+  function showError(msg) {
+    errorCard.classList.add("visible");
+    errorMsg.textContent = msg;
+  }
+
+  function hideError() {
+    errorCard.classList.remove("visible");
+    errorMsg.textContent = "";
+  }
+
+  // ── download ──
+  downloadBtn.addEventListener("click", () => {
+    window.open(`${BACKEND}/download/${jobId}`, "_blank");
+  });
+
+  // ── reset ──
+  resetBtn.addEventListener("click", () => {
+    // Clean up old job
+    if (jobId) fetch(`${BACKEND}/job/${jobId}`, { method: "DELETE" }).catch(() => {});
+    jobId = newJobId();
+    videoReady = false;
+    refReady = false;
+
+    videoInput.value = "";
+    refInput.value = "";
+    videoZone.classList.remove("filled");
+    refZone.classList.remove("filled");
+    document.getElementById("videoTitle").textContent = "Tap to upload video";
+    document.getElementById("refTitle").textContent = "Add reference photo";
+    document.getElementById("refPreview").style.display = "none";
+    document.getElementById("refPlaceholder").style.display = "flex";
+    document.getElementById("videoUploadProgress").classList.remove("visible");
+    document.getElementById("videoProgressFill").style.width = "0%";
+
+    progressWrap.classList.remove("visible");
+    resultCard.classList.remove("visible");
+    hideError();
+    checkReady();
+  });
+</script>
+</body>
+</html>
