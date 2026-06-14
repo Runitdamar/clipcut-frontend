@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ClipCut AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --glass: rgba(255,255,255,0.01);
+    --glass-strong: rgba(255,255,255,0.04);
+  }
+
+  html, body {
+    background: #000;
+    color: #fff;
+    font-family: 'Barlow', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── liquid glass ── */
+  .lg {
+    background: var(--glass);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    box-shadow: inset 0 1px 1px rgba(255,255,255,0.1);
+    position: relative;
+    overflow: hidden;
+  }
+  .lg::before {
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: inherit;
+    padding: 1.4px;
+    background: linear-gradient(180deg,
+      rgba(255,255,255,0.45) 0%,
+      rgba(255,255,255,0.15) 20%,
+      rgba(255,255,255,0) 40%,
+      rgba(255,255,255,0) 60%,
+      rgba(255,255,255,0.15) 80%,
+      rgba(255,255,255,0.45) 100%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  .lg-strong {
+    background: var(--glass-strong);
+    backdrop-filter: blur(50px);
+    -webkit-backdrop-filter: blur(50px);
+    box-shadow: 4px 4px 4px rgba(0,0,0,0.05), inset 0 1px 1px rgba(255,255,255,0.15);
+    position: relative;
+    overflow: hidden;
+  }
+  .lg-strong::before {
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: inherit;
+    padding: 1.4px;
+    background: linear-gradient(180deg,
+      rgba(255,255,255,0.5) 0%,
+      rgba(255,255,255,0.2) 20%,
+      rgba(255,255,255,0) 40%,
+      rgba(255,255,255,0) 60%,
+      rgba(255,255,255,0.2) 80%,
+      rgba(255,255,255,0.5) 100%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* ── layout ── */
+  .page {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── background video ── */
+  #bgvideo {
+    position: fixed;
+    left: 50%; top: 0;
+    transform: translateX(-50%);
+    width: 120%; height: 120%;
+    object-fit: cover;
+    object-position: top center;
+    z-index: 0;
+    opacity: 0;
+  }
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(to bottom,
+      rgba(0,0,0,0.4) 0%,
+      rgba(0,0,0,0.55) 60%,
+      rgba(0,0,0,0.82) 100%);
+    z-index: 1;
+  }
+
+  /* ── content ── */
+  .content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    max-width: 480px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 0 20px;
+  }
+
+  /* ── navbar ── */
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 0;
+  }
+  .logo-circle {
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-text {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 22px;
+    color: white;
+    line-height: 1;
+  }
+  .nav-badge {
+    background: rgba(255,255,255,0.08);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.6);
+    font-family: 'Barlow', sans-serif;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* ── hero ── */
+  .hero {
+    padding: 16px 0 24px;
+    text-align: center;
+  }
+  .badge-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 999px;
+    padding: 6px 14px 6px 6px;
+    margin-bottom: 20px;
+  }
+  .badge-new {
+    background: white;
+    color: black;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-family: 'Barlow', sans-serif;
+  }
+  .badge-text {
+    font-size: 12px;
+    color: rgba(255,255,255,0.75);
+    font-family: 'Barlow', sans-serif;
+  }
+  h1 {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: clamp(2.6rem, 9vw, 4rem);
+    line-height: 0.88;
+    letter-spacing: -2px;
+    color: white;
+    margin-bottom: 16px;
+  }
+  .sub {
+    font-size: 13px;
+    color: rgba(255,255,255,0.6);
+    font-weight: 300;
+    line-height: 1.6;
+    max-width: 300px;
+    margin: 0 auto;
+  }
+
+  /* ── cards ── */
+  .cards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+    padding-bottom: 24px;
+  }
+
+  /* upload zone */
+  .upload-card {
+    border-radius: 20px;
+    padding: 22px;
+    cursor: pointer;
+    transition: box-shadow 0.2s;
+    display: block;
+    text-decoration: none;
+  }
+  .upload-card:hover {
+    box-shadow: inset 0 1px 1px rgba(255,255,255,0.2), 0 0 0 1px rgba(255,255,255,0.12);
+  }
+  .upload-card.filled {
+    box-shadow: inset 0 1px 1px rgba(255,255,255,0.2), 0 0 0 1px rgba(255,255,255,0.25);
+  }
+
+  /* video card */
+  .video-card-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .icon-box {
+    width: 48px; height: 48px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+  }
+  .card-title {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 1.5rem;
+    color: white;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .card-sub {
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    font-family: 'Barlow', sans-serif;
+  }
+  .card-check {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.7);
+    font-family: 'Barlow', sans-serif;
+    margin-top: 10px;
+  }
+  .card-check.show { display: flex; }
+
+  /* ref card */
+  .ref-card-inner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .ref-avatar {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .ref-avatar img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: none;
+  }
+  .ref-info { flex: 1; }
+  .arrow-icon { opacity: 0.4; flex-shrink: 0; }
+
+  /* upload progress */
+  .upload-prog {
+    display: none;
+    margin-top: 12px;
+  }
+  .upload-prog.show { display: block; }
+  .prog-track {
+    height: 2px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 99px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+  .prog-fill {
+    height: 100%;
+    background: white;
+    border-radius: 99px;
+    transition: width 0.25s ease;
+    width: 0%;
+  }
+  .prog-text {
+    font-size: 10px;
+    color: rgba(255,255,255,0.4);
+    font-family: 'Barlow', sans-serif;
+  }
+
+  /* banner */
+  .banner {
+    border-radius: 18px;
+    padding: 14px 18px;
+    text-align: center;
+    font-size: 13px;
+    color: rgba(255,255,255,0.9);
+    font-family: 'Barlow', sans-serif;
+    letter-spacing: 0.5px;
+    display: none;
+  }
+  .banner.show { display: block; }
+
+  /* processing */
+  .processing-card {
+    border-radius: 20px;
+    padding: 20px;
+    display: none;
+  }
+  .processing-card.show { display: block; }
+  .proc-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .proc-text {
+    font-size: 13px;
+    color: rgba(255,255,255,0.7);
+    font-family: 'Barlow', sans-serif;
+  }
+  .proc-pct {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 18px;
+    color: white;
+  }
+
+  /* error */
+  .error-card {
+    border-radius: 16px;
+    padding: 14px 18px;
+    border: 1px solid rgba(255,80,80,0.3);
+    background: rgba(255,60,60,0.06);
+    display: none;
+  }
+  .error-card.show { display: block; }
+  .error-text {
+    font-size: 12px;
+    color: rgba(255,120,120,0.9);
+    font-family: 'Barlow', sans-serif;
+    line-height: 1.5;
+  }
+
+  /* result */
+  .result-card {
+    border-radius: 24px;
+    padding: 22px;
+    display: none;
+  }
+  .result-card.show { display: block; }
+  .result-title {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 1.8rem;
+    color: white;
+    line-height: 1;
+    margin-bottom: 18px;
+  }
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .stat-box {
+    border-radius: 16px;
+    padding: 14px 10px;
+    text-align: center;
+  }
+  .stat-val {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 1.7rem;
+    color: white;
+    line-height: 1;
+    letter-spacing: -1px;
+  }
+  .stat-label {
+    font-size: 10px;
+    color: rgba(255,255,255,0.4);
+    font-family: 'Barlow', sans-serif;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .btn-download {
+    width: 100%;
+    border-radius: 999px;
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 14px;
+    font-family: 'Barlow', sans-serif;
+    font-weight: 500;
+    color: white;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    margin-bottom: 10px;
+    transition: opacity 0.2s;
+  }
+  .btn-download:hover { opacity: 0.8; }
+  .btn-reset {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,0.3);
+    font-size: 12px;
+    font-family: 'Barlow', sans-serif;
+    cursor: pointer;
+    padding: 8px;
+    transition: color 0.2s;
+  }
+  .btn-reset:hover { color: rgba(255,255,255,0.6); }
+
+  /* footer */
+  footer {
+    text-align: center;
+    padding: 16px 0 24px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.15);
+    font-family: 'Barlow', sans-serif;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  /* animations */
+  .fade-in {
+    opacity: 0;
+    transform: translateY(20px);
+    filter: blur(8px);
+    animation: fadeUp 0.6s ease forwards;
+  }
+  @keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); filter: blur(0); }
+  }
+  .fade-in:nth-child(1) { animation-delay: 0.2s; }
+  .fade-in:nth-child(2) { animation-delay: 0.4s; }
+  .fade-in:nth-child(3) { animation-delay: 0.6s; }
+  .fade-in:nth-child(4) { animation-delay: 0.75s; }
+  .fade-in:nth-child(5) { animation-delay: 0.9s; }
+  .fade-in:nth-child(6) { animation-delay: 1.05s; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
+  .pulsing { animation: pulse 1.8s infinite; }
+</style>
+</head>
+<body>
+
+<!-- Background -->
+<video id="bgvideo" autoplay muted playsinline preload="auto"></video>
+<div class="overlay"></div>
+
+<div class="page">
+  <div class="content">
+
+    <!-- Nav -->
+    <nav class="fade-in">
+      <div class="logo-circle lg">
+        <span class="logo-text">c</span>
+      </div>
+      <div class="nav-badge">ClipCut AI</div>
+      <div style="width:46px"></div>
+    </nav>
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="fade-in">
+        <div class="badge-pill lg">
+          <span class="badge-new">New</span>
+          <span class="badge-text">AI-powered person extraction</span>
+        </div>
+      </div>
+      <h1 class="fade-in">Extract Anyone From Any Video</h1>
+      <p class="sub fade-in">Upload a video and a reference photo. Our AI finds that person across every scene and delivers a clean 9:16 clip — automatically.</p>
+    </div>
+
+    <!-- Cards -->
+    <div class="cards">
+
+      <!-- Auto-start banner -->
+      <div class="banner lg-strong" id="banner">
+        ⚡ Both files ready — extracting now...
+      </div>
+
+      <!-- Error -->
+      <div class="error-card" id="errorCard">
+        <p class="error-text" id="errorText"></p>
+      </div>
+
+      <!-- Video Upload -->
+      <label class="upload-card lg fade-in" id="videoCard">
+        <input type="file" accept="video/*" id="videoInput" style="display:none">
+        <div class="video-card-inner">
+          <div class="icon-box lg">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="2" width="20" height="20" rx="3"/>
+              <polygon points="10 8 16 12 10 16 10 8" fill="white" stroke="none"/>
+            </svg>
+          </div>
+          <p class="card-title" id="videoTitle">Select Video</p>
+          <p class="card-sub">MP4, MOV, AVI — any size</p>
+          <div class="card-check" id="videoCheck">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Ready
+          </div>
+          <div class="upload-prog" id="videoProg">
+            <div class="prog-track"><div class="prog-fill" id="videoFill"></div></div>
+            <p class="prog-text" id="videoProgText">Uploading...</p>
+          </div>
+        </div>
+      </label>
+
+      <!-- Reference Photo Upload -->
+      <label class="upload-card lg fade-in" id="refCard">
+        <input type="file" accept="image/*" id="refInput" style="display:none">
+        <div class="ref-card-inner">
+          <div class="ref-avatar lg" id="refAvatar">
+            <span id="refEmoji">👤</span>
+            <img id="refImg" alt="ref">
+          </div>
+          <div class="ref-info">
+            <p class="card-title" id="refTitle">Reference Photo</p>
+            <p class="card-sub">Clear front-facing photo of person</p>
+            <div class="card-check" id="refCheck">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Ready
+            </div>
+          </div>
+          <div class="arrow-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 17L17 7"/><path d="M7 7h10v10"/>
+            </svg>
+          </div>
+        </div>
+      </label>
+
+      <!-- Processing -->
+      <div class="processing-card lg-strong" id="processingCard">
+        <!-- Preview frame -->
+        <div id="previewWrap" style="display:none; margin-bottom:14px; border-radius:14px; overflow:hidden; position:relative;">
+          <img id="previewImg" style="width:100%; display:block; border-radius:14px;" alt="Preview">
+          <div style="position:absolute; bottom:8px; left:10px; background:rgba(0,0,0,0.5); border-radius:99px; padding:3px 10px; font-size:10px; color:rgba(255,255,255,0.8); font-family:'Barlow',sans-serif; backdrop-filter:blur(4px);">Live preview</div>
+        </div>
+        <!-- Progress row -->
+        <div class="proc-row">
+          <p class="proc-text pulsing" id="procText">Processing...</p>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <p class="proc-pct" id="procPct">0%</p>
+            <p id="procEta" style="font-size:11px; color:rgba(255,255,255,0.4); font-family:'Barlow',sans-serif;"></p>
+          </div>
+        </div>
+        <div class="prog-track" style="margin-bottom:14px;"><div class="prog-fill" id="procFill"></div></div>
+        <!-- Cancel -->
+        <button id="cancelBtn" style="width:100%; background:rgba(255,60,60,0.08); border:1px solid rgba(255,80,80,0.2); border-radius:99px; padding:10px; font-size:12px; font-family:'Barlow',sans-serif; color:rgba(255,120,120,0.8); cursor:pointer;">
+          Cancel Processing
+        </button>
+      </div>
+
+      <!-- Result -->
+      <div class="result-card lg-strong" id="resultCard">
+        <p class="result-title">Person extracted</p>
+        <div class="stats-row">
+          <div class="stat-box lg">
+            <p class="stat-val" id="statDur">—</p>
+            <p class="stat-label">Original</p>
+          </div>
+          <div class="stat-box lg">
+            <p class="stat-val" id="statKept">—</p>
+            <p class="stat-label">Extracted</p>
+          </div>
+          <div class="stat-box lg">
+            <p class="stat-val" id="statClips">—</p>
+            <p class="stat-label">Scenes</p>
+          </div>
+        </div>
+        <button class="btn-download lg-strong" id="downloadBtn">
+          Download Video
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>
+        </button>
+        <button class="btn-reset" id="resetBtn">Process another video</button>
+      </div>
+
+      <!-- Idle stats removed -->
+
+    </div><!-- /cards -->
+
+    <footer>ClipCut AI — Powered by ArcFace</footer>
+
+  </div><!-- /content -->
+</div><!-- /page -->
+
+<script>
+  const BACKEND = "https://runitdamar-clipcut-backend.hf.space";
+  const CHUNK = 5 * 1024 * 1024;
+
+  // ── Background video crossfade ──────────────────────────────────────────────
+  (function() {
+    const v = document.getElementById('bgvideo');
+    const FADE_MS = 500, LEAD = 0.55;
+    let rafId = null, fadingOut = false;
+
+    function fadeTo(target, ms) {
+      cancelAnimationFrame(rafId);
+      const start = performance.now();
+      const from = parseFloat(v.style.opacity) || 0;
+      function tick(now) {
+        const p = Math.min((now - start) / ms, 1);
+        v.style.opacity = from + (target - from) * p;
+        if (p < 1) rafId = requestAnimationFrame(tick);
+      }
+      rafId = requestAnimationFrame(tick);
+    }
+
+    v.src = "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260418_080021_d598092b-c4c2-4e53-8e46-94cf9064cd50.mp4";
+    v.addEventListener('loadeddata', () => { v.style.opacity = 0; v.play(); fadeTo(1, FADE_MS); });
+    v.addEventListener('timeupdate', () => {
+      if (!fadingOut && v.duration && v.duration - v.currentTime <= LEAD && v.duration - v.currentTime > 0) {
+        fadingOut = true; fadeTo(0, FADE_MS);
+      }
+    });
+    v.addEventListener('ended', () => {
+      v.style.opacity = 0;
+      setTimeout(() => { v.currentTime = 0; v.play(); fadingOut = false; fadeTo(1, FADE_MS); }, 100);
+    });
+  })();
+
+  // ── App state ───────────────────────────────────────────────────────────────
+  let jobId = 'job_' + Math.random().toString(36).slice(2,10) + Date.now();
+  let videoReady = false, refReady = false, processing = false;
+  let pollTimer = null;
+
+  // ── Notifications ───────────────────────────────────────────────────────────
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+  function notify(title, body) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, { body, icon: 'https://em-content.zobj.net/source/google/387/clapper-board_1f3ac.png' });
+    }
+  }
+
+  // ── Reconnect ───────────────────────────────────────────────────────────────
+  window.addEventListener('load', () => {
+    const saved = localStorage.getItem('clipcut_job_id');
+    if (!saved) return;
+    fetch(`${BACKEND}/status/${saved}`).then(r => r.json()).then(d => {
+      if (d.status === 'done') {
+        showResult(d.stats);
+      } else if (d.status === 'processing' || d.status === 'queued') {
+        jobId = saved;
+        processing = true;
+        showProcessing(d.progress, d.status_text, d.eta);
+        pollTimer = setInterval(() => poll(saved), 2500);
+        startPreviewPolling(saved);
+      } else {
+        localStorage.removeItem('clipcut_job_id');
+      }
+    }).catch(() => localStorage.removeItem('clipcut_job_id'));
+  });
+
+  // ── Chunked upload ──────────────────────────────────────────────────────────
+  async function uploadChunked(file, fileType, onPct) {
+    const total = Math.ceil(file.size / CHUNK);
+    for (let i = 0; i < total; i++) {
+      const blob = file.slice(i * CHUNK, Math.min((i+1)*CHUNK, file.size));
+      const fd = new FormData();
+      fd.append('chunk', blob, file.name);
+      const url = `${BACKEND}/upload-chunk?job_id=${jobId}&chunk_index=${i}&total_chunks=${total}&file_type=${fileType}`;
+      const r = await fetch(url, { method: 'POST', body: fd });
+      if (!r.ok) throw new Error(`Chunk ${i} failed`);
+      onPct(Math.round(((i+1)/total)*100));
+    }
+  }
+
+  // ── Video input ─────────────────────────────────────────────────────────────
+  document.getElementById('videoInput').addEventListener('change', async function() {
+    const file = this.files[0]; if (!file) return;
+    videoReady = false;
+    const name = file.name.length > 28 ? file.name.slice(0,25)+'...' : file.name;
+    document.getElementById('videoTitle').textContent = name;
+    document.getElementById('videoCard').classList.add('filled');
+    document.getElementById('videoProg').classList.add('show');
+    document.getElementById('videoCheck').classList.remove('show');
+    try {
+      await uploadChunked(file, 'video', pct => {
+        document.getElementById('videoFill').style.width = pct + '%';
+        document.getElementById('videoProgText').textContent = 'Uploading ' + pct + '%';
+      });
+      document.getElementById('videoProgText').textContent = 'Upload complete ✓';
+      document.getElementById('videoCheck').classList.add('show');
+      document.getElementById('videoProg').classList.remove('show');
+      videoReady = true;
+      checkBothReady();
+    } catch(e) {
+      showError('Video upload failed: ' + e.message);
+    }
+  });
+
+  // ── Reference input ─────────────────────────────────────────────────────────
+  document.getElementById('refInput').addEventListener('change', async function() {
+    const file = this.files[0]; if (!file) return;
+    refReady = false;
+    const name = file.name.length > 22 ? file.name.slice(0,19)+'...' : file.name;
+    document.getElementById('refTitle').textContent = name;
+    document.getElementById('refCard').classList.add('filled');
+    document.getElementById('refCheck').classList.remove('show');
+    // Preview
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = document.getElementById('refImg');
+      img.src = e.target.result;
+      img.style.display = 'block';
+      document.getElementById('refEmoji').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+    try {
+      const total = Math.ceil(file.size / CHUNK);
+      for (let i = 0; i < total; i++) {
+        const blob = file.slice(i*CHUNK, Math.min((i+1)*CHUNK, file.size));
+        const fd = new FormData();
+        fd.append('chunk', blob, file.name);
+        await fetch(`${BACKEND}/upload-chunk?job_id=${jobId}&chunk_index=${i}&total_chunks=${total}&file_type=reference`, { method: 'POST', body: fd });
+      }
+      document.getElementById('refCheck').classList.add('show');
+      refReady = true;
+      checkBothReady();
+    } catch(e) {
+      showError('Photo upload failed: ' + e.message);
+    }
+  });
+
+  // ── Auto-start ──────────────────────────────────────────────────────────────
+  function checkBothReady() {
+    if (videoReady && refReady && !processing) {
+      processing = true;
+      const banner = document.getElementById('banner');
+      banner.classList.add('show');
+      setTimeout(() => { banner.classList.remove('show'); startExtraction(); }, 1500);
+    }
+  }
+
+  async function startExtraction() {
+    hideError();
+    document.getElementById('resultCard').classList.remove('show');
+    showProcessing(0, 'Starting...');
+    localStorage.setItem('clipcut_job_id', jobId);
+    try {
+      const r = await fetch(`${BACKEND}/process?job_id=${jobId}`, { method: 'POST' });
+      if (!r.ok) { const d = await r.json(); throw new Error(d.detail || 'Failed to start'); }
+      pollTimer = setInterval(() => poll(jobId), 2500);
+      startPreviewPolling(jobId);
+    } catch(e) {
+      showError(e.message);
+      processing = false;
+      document.getElementById('processingCard').classList.remove('show');
+    }
+  }
+
+  let previewTimer = null;
+
+  async function poll(jid) {
+    try {
+      const r = await fetch(`${BACKEND}/status/${jid}`);
+      if (!r.ok) return;
+      const d = await r.json();
+      showProcessing(d.progress, d.status_text, d.eta);
+      if (d.status === 'done') {
+        clearInterval(pollTimer);
+        clearInterval(previewTimer);
+        localStorage.removeItem('clipcut_job_id');
+        document.getElementById('processingCard').classList.remove('show');
+        showResult(d.stats);
+        notify('✅ ClipCut — Video Ready!', `Extracted ${d.stats?.extracted}s across ${d.stats?.clips} scenes.`);
+      } else if (d.status === 'failed') {
+        clearInterval(pollTimer);
+        clearInterval(previewTimer);
+        localStorage.removeItem('clipcut_job_id');
+        document.getElementById('processingCard').classList.remove('show');
+        showError(d.error || 'Processing failed.');
+        processing = false;
+        notify('❌ ClipCut Failed', d.error || 'Something went wrong.');
+      } else if (d.status === 'cancelled') {
+        clearInterval(pollTimer);
+        clearInterval(previewTimer);
+        localStorage.removeItem('clipcut_job_id');
+        document.getElementById('processingCard').classList.remove('show');
+        processing = false;
+        window.location.reload();
+      }
+    } catch(e) {}
+  }
+
+  function startPreviewPolling(jid) {
+    clearInterval(previewTimer);
+    previewTimer = setInterval(() => {
+      const img = document.getElementById('previewImg');
+      const wrap = document.getElementById('previewWrap');
+      const url = `${BACKEND}/preview/${jid}?t=${Date.now()}`;
+      const test = new Image();
+      test.onload = () => {
+        img.src = url;
+        wrap.style.display = 'block';
+      };
+      test.src = url;
+    }, 4000); // refresh preview every 4s
+  }
+
+  function showProcessing(pct, text, eta) {
+    document.getElementById('processingCard').classList.add('show');
+    document.getElementById('procText').textContent = text || 'Processing...';
+    document.getElementById('procPct').textContent = pct + '%';
+    document.getElementById('procFill').style.width = pct + '%';
+    const etaEl = document.getElementById('procEta');
+    if (eta && pct > 5 && pct < 95) etaEl.textContent = '~' + eta;
+    else etaEl.textContent = '';
+  }
+
+  document.getElementById('cancelBtn').addEventListener('click', async () => {
+    if (!jobId) return;
+    try {
+      await fetch(`${BACKEND}/cancel/${jobId}`, { method: 'POST' });
+    } catch(e) {}
+    clearInterval(pollTimer);
+    clearInterval(previewTimer);
+    localStorage.removeItem('clipcut_job_id');
+    window.location.reload();
+  });
+
+  function showResult(stats) {
+    document.getElementById('resultCard').classList.add('show');
+    if (stats) {
+      document.getElementById('statDur').textContent = stats.duration + 's';
+      document.getElementById('statKept').textContent = stats.extracted + 's';
+      document.getElementById('statClips').textContent = stats.clips;
+    }
+  }
+
+  function showError(msg) {
+    document.getElementById('errorCard').classList.add('show');
+    document.getElementById('errorText').textContent = '⚠ ' + msg;
+  }
+  function hideError() {
+    document.getElementById('errorCard').classList.remove('show');
+  }
+
+  document.getElementById('downloadBtn').addEventListener('click', () => {
+    window.open(`${BACKEND}/download/${jobId}`, '_blank');
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    fetch(`${BACKEND}/job/${jobId}`, { method: 'DELETE' }).catch(() => {});
+    clearInterval(pollTimer);
+    localStorage.removeItem('clipcut_job_id');
+    window.location.reload();
+  });
+</script>
+</body>
+</html>
