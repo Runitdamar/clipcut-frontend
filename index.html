@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Vidix — AI Video Tools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: 'Inter', sans-serif;
+    background: #000;
+    color: #fff;
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: rgba(255,255,255,0.15); color: #fff; }
+
+  /* liquid glass */
+  .liquid-glass {
+    background: rgba(255,255,255,0.01);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    box-shadow: inset 0 1px 1px rgba(255,255,255,0.1);
+    position: relative; overflow: hidden;
+  }
+  .liquid-glass::before {
+    content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.4px;
+    background: linear-gradient(180deg,
+      rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.15) 20%,
+      rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%,
+      rgba(255,255,255,0.15) 80%, rgba(255,255,255,0.45) 100%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
+  }
+
+  /* ── background video ── */
+  #bgvideo {
+    position: fixed; right: 0; top: 0;
+    width: 55%; height: 100%;
+    object-fit: cover; object-position: center;
+    z-index: 0; opacity: 0;
+    transition: opacity 0.6s ease;
+  }
+  #bgvideo-overlay {
+    position: fixed; right: 0; top: 0;
+    width: 55%; height: 100%; z-index: 1;
+    background: linear-gradient(to right, #000 0%, transparent 40%),
+                linear-gradient(to top, #000 0%, transparent 30%);
+    pointer-events: none;
+  }
+  @media (max-width: 1023px) {
+    #bgvideo, #bgvideo-overlay { display: none; }
+  }
+
+  /* ── navbar ── */
+  header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+    padding: 18px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: transparent;
+  }
+  @media(max-width:600px){ header { padding: 14px 20px; } }
+
+  .logo { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; color: #fff; }
+  .logo-star { font-size: 24px; margin-left: 4px; vertical-align: middle; line-height: 1; opacity: 0.7; }
+
+  .nav-links { display: flex; gap: 0; align-items: center; font-size: 15px; }
+  .nav-links a { color: rgba(255,255,255,0.5); text-decoration: none; padding: 4px 10px; transition: color 0.2s; font-weight: 400; }
+  .nav-links a:hover { color: #fff; }
+  .nav-links .sep { color: rgba(255,255,255,0.2); font-size: 9px; }
+
+  .nav-cta {
+    font-size: 13px; color: rgba(255,255,255,0.55);
+    text-decoration: none; transition: color 0.2s; font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+  .nav-cta:hover { color: #fff; }
+
+  @media (max-width: 767px) { .nav-links, .nav-cta { display: none; } }
+
+  /* hamburger */
+  .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; background: none; border: none; padding: 4px; }
+  .hamburger span { display: block; width: 22px; height: 1.5px; background: rgba(255,255,255,0.8); transition: all 0.3s; }
+  @media (max-width: 767px) { .hamburger { display: flex; } }
+  .hamburger.open span:nth-child(1) { transform: rotate(45deg) translate(4.5px,4.5px); }
+  .hamburger.open span:nth-child(2) { opacity: 0; }
+  .hamburger.open span:nth-child(3) { transform: rotate(-45deg) translate(4.5px,-4.5px); }
+
+  /* mobile menu */
+  .mobile-menu {
+    position: fixed; inset: 0; z-index: 40;
+    background: rgba(0,0,0,0.97); backdrop-filter: blur(20px);
+    flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none; display: flex;
+  }
+  .mobile-menu.open { opacity: 1; pointer-events: auto; }
+  .mobile-menu a { font-size: 28px; font-weight: 600; color: rgba(255,255,255,0.8); text-decoration: none; transition: color 0.2s; letter-spacing: -0.02em; }
+  .mobile-menu a:hover { color: #fff; }
+
+  /* ── main content ── */
+  main {
+    position: relative; z-index: 10;
+    min-height: 100vh;
+    max-width: 640px;
+    padding: 130px 32px 80px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  @media (max-width: 600px) { main { padding: 110px 20px 60px; } }
+
+  /* headline */
+  h1 {
+    font-size: clamp(3rem, 9vw, 5rem);
+    font-weight: 500;
+    letter-spacing: -0.045em;
+    line-height: 1.0;
+    color: #fff;
+    margin-bottom: 28px;
+    white-space: pre-wrap;
+    min-height: 2.1em;
+  }
+  .serif { font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; }
+  .cursor {
+    display: inline-block; width: 3px; height: 0.82em;
+    background: #fff; vertical-align: middle; margin-left: 3px;
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* subtext */
+  .sub {
+    font-size: 16px; color: rgba(255,255,255,0.45);
+    font-weight: 300; line-height: 1.7;
+    margin-bottom: 52px; max-width: 460px;
+  }
+
+  /* tool selector */
+  .selector-title { font-size: 13px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 16px; }
+
+  /* pills */
+  .pills { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+  .pill {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 20px; border-radius: 999px;
+    font-size: 14px; font-weight: 500;
+    cursor: pointer; border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.65);
+    transition: all 0.2s; user-select: none; font-family: 'Inter', sans-serif;
+  }
+  .pill:hover { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.2); }
+  .pill.active {
+    background: #fff; color: #000; border-color: #fff;
+    box-shadow: 0 4px 20px rgba(255,255,255,0.1);
+  }
+  .pill.disabled { opacity: 0.3; cursor: not-allowed; }
+  .pill .check { display: none; font-size: 11px; }
+  .pill.active .check { display: inline; }
+
+  /* feedback banner */
+  .feedback { min-height: 36px; transition: all 0.3s; margin-top: 4px; }
+  .feedback-empty { font-size: 12px; color: rgba(255,255,255,0.22); font-style: italic; padding: 4px 0; }
+  .feedback-banner {
+    border-radius: 16px; padding: 14px 18px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    animation: fadeIn 0.25s ease;
+  }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  .feedback-info { font-size: 12px; color: rgba(255,255,255,0.45); line-height: 1.5; }
+  .feedback-info strong { color: #fff; }
+  .feedback-links { display: flex; gap: 12px; flex-shrink: 0; }
+  .feedback-link {
+    font-size: 11px; font-weight: 600; color: #fff;
+    text-decoration: none; text-transform: uppercase; letter-spacing: 0.08em;
+    transition: opacity 0.2s; white-space: nowrap;
+  }
+  .feedback-link:hover { opacity: 0.5; }
+
+  /* direct links */
+  .direct-links { margin-top: 44px; display: flex; gap: 24px; }
+  .direct-links a {
+    font-size: 13px; color: rgba(255,255,255,0.35);
+    text-decoration: underline; text-underline-offset: 3px;
+    text-decoration-color: rgba(255,255,255,0.15);
+    transition: color 0.2s;
+  }
+  .direct-links a:hover { color: rgba(255,255,255,0.75); }
+
+  footer {
+    padding: 32px; font-size: 11px; color: rgba(255,255,255,0.2);
+    letter-spacing: 0.15em; text-transform: uppercase;
+    position: relative; z-index: 10;
+  }
+
+  /* fade in */
+  .fade-up { opacity: 0; transform: translateY(18px); animation: fadeUp 0.65s cubic-bezier(.22,1,.36,1) forwards; }
+  @keyframes fadeUp { to { opacity:1; transform:translateY(0); } }
+  .d1{animation-delay:0.1s}.d2{animation-delay:0.25s}.d3{animation-delay:0.42s}.d4{animation-delay:0.58s}
+</style>
+</head>
+<body>
+
+<!-- BG Video (desktop only) -->
+<video id="bgvideo" muted playsinline preload="auto"
+  src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260601_110537_3a579fa0-7bbc-4d94-9d25-0e816c7840f5.mp4">
+</video>
+<div id="bgvideo-overlay"></div>
+
+<!-- Navbar -->
+<header>
+  <div style="display:flex;align-items:center;gap:4px;">
+    <span class="logo">Vidix&#174;</span>
+    <span class="logo-star">&#10033;</span>
+  </div>
+  <nav class="nav-links">
+    <a href="#">Tools</a><span class="sep">•</span>
+    <a href="#">About</a><span class="sep">•</span>
+    <a href="#">Roadmap</a>
+  </nav>
+  <a href="#tools" class="nav-cta">Explore tools</a>
+  <button class="hamburger" id="hamburger">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+
+<!-- Mobile Menu -->
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#" onclick="closeMobile()">Tools</a>
+  <a href="#" onclick="closeMobile()">About</a>
+  <a href="#" onclick="closeMobile()">Roadmap</a>
+  <a href="#tools" onclick="closeMobile()" style="font-size:20px;opacity:0.5;">Explore tools</a>
+</div>
+
+<!-- Main -->
+<main>
+  <h1 id="headline" class="fade-up"><span class="cursor"></span></h1>
+
+  <p class="sub fade-up d2">
+    AI-powered video tools for creators — extract people,
+    download reels, and more. All free, from your phone.
+  </p>
+
+  <div id="tools" class="fade-up d3">
+    <div class="selector-title">Which tool do you need?</div>
+
+    <div class="pills">
+      <div class="pill" data-id="clipcut" onclick="togglePill(this)">
+        ✂️ ClipCut <span class="check">✓</span>
+      </div>
+      <div class="pill" data-id="vidfetch" onclick="togglePill(this)">
+        ⬇️ VidFetch <span class="check">✓</span>
+      </div>
+      <div class="pill disabled" data-id="more">
+        ✨ More Tools <span style="font-size:10px;opacity:0.5;margin-left:4px;">SOON</span>
+      </div>
+    </div>
+
+    <div class="feedback">
+      <p class="feedback-empty" id="feedbackEmpty">Click a tool above to explore it</p>
+      <div class="feedback-banner liquid-glass" id="feedbackBanner" style="display:none;">
+        <div class="feedback-info">
+          <strong id="feedbackNames"></strong><br>
+          <span id="feedbackTags" style="color:rgba(255,255,255,0.3);font-size:11px;"></span>
+        </div>
+        <div class="feedback-links" id="feedbackLinks"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="direct-links fade-up d4">
+    <a href="clipcut.html">Open ClipCut →</a>
+    <a href="vidfetch.html">Open VidFetch →</a>
+  </div>
+</main>
+
+<footer>Vidix — AI Video Suite</footer>
+
+<script>
+  // hamburger
+  const hamburger = document.getElementById('hamburger');
+  const mobileMenu = document.getElementById('mobileMenu');
+  hamburger.addEventListener('click', () => {
+    hamburger.classList.toggle('open');
+    mobileMenu.classList.toggle('open');
+  });
+  function closeMobile() {
+    hamburger.classList.remove('open');
+    mobileMenu.classList.remove('open');
+  }
+
+  // bg video
+  const video = document.getElementById('bgvideo');
+  let prevX = null, targetTime = 0;
+
+  video.addEventListener('loadedmetadata', () => {
+    if (window.innerWidth >= 1024) video.style.opacity = '0.85';
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (window.innerWidth < 1024 || !video.duration) return;
+    if (prevX !== null) {
+      const delta = e.clientX - prevX;
+      targetTime += (delta / window.innerWidth) * 0.8 * video.duration;
+      targetTime = Math.max(0, Math.min(targetTime, video.duration));
+      video.currentTime = targetTime;
+    }
+    prevX = e.clientX;
+  });
+
+  function checkMobile() {
+    if (window.innerWidth < 1024) {
+      video.autoplay = true; video.loop = true; video.play().catch(()=>{});
+    }
+  }
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+
+  // typewriter — same text, now ends with serif italic on last word
+  const TEXT = "build your\nvideo toolkit.";
+  const headline = document.getElementById('headline');
+  let i = 0;
+
+  setTimeout(() => {
+    const interval = setInterval(() => {
+      i++;
+      const typed = TEXT.slice(0, i);
+      if (i >= TEXT.length) {
+        headline.innerHTML = 'build your\nvideo <span class="serif">toolkit.</span>';
+        clearInterval(interval);
+      } else {
+        headline.innerHTML = typed + '<span class="cursor"></span>';
+      }
+    }, 38);
+  }, 600);
+
+  // tool pills
+  const TOOL_INFO = {
+    clipcut:  { label: 'ClipCut',  tag: 'Person Extraction', href: 'clipcut.html' },
+    vidfetch: { label: 'VidFetch', tag: 'Download · Merge',  href: 'vidfetch.html' },
+  };
+  let selected = new Set();
+
+  function togglePill(el) {
+    const id = el.dataset.id;
+    if (!id || id === 'more') return;
+    el.classList.toggle('active');
+    if (selected.has(id)) selected.delete(id);
+    else selected.add(id);
+    updateFeedback();
+  }
+
+  function updateFeedback() {
+    const empty  = document.getElementById('feedbackEmpty');
+    const banner = document.getElementById('feedbackBanner');
+    const names  = document.getElementById('feedbackNames');
+    const tags   = document.getElementById('feedbackTags');
+    const links  = document.getElementById('feedbackLinks');
+
+    if (selected.size === 0) {
+      empty.style.display = 'block';
+      banner.style.display = 'none';
+      return;
+    }
+    empty.style.display = 'none';
+    banner.style.display = 'flex';
+
+    const tools = [...selected].map(id => TOOL_INFO[id]);
+    names.textContent = tools.map(t => t.label).join(', ');
+    tags.textContent  = tools.map(t => t.tag).join(' · ');
+    links.innerHTML   = tools.map(t =>
+      `<a class="feedback-link" href="${t.href}">${t.label} →</a>`
+    ).join('');
+  }
+</script>
+</body>
+</html>
